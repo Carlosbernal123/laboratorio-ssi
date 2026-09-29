@@ -1,0 +1,544 @@
+<title>Laboratorio SSI</title>
+<style>
+  /* Palette: warm beige/brown, liquid-glass panels floating over soft blurred color fields.
+     Layout: numbered step rail (stacks on phone), sticky glass console beside it. */
+  :root{
+    --bg:#F1E9DC; --bg-blob-1:#E7C9A9; --bg-blob-2:#C9A66B; --bg-blob-3:#D9C0A3;
+    --glass:rgba(255,250,242,0.55); --glass-2:rgba(255,250,242,0.38); --glass-border:rgba(255,255,255,0.55);
+    --ink:#4A3728; --ink-soft:#7A6552; --ink-faint:#A6907A;
+    --accent:#A9714B; --accent-ink:#7C5030; --accent-soft:#D9B48C;
+    --ok:#6B8A5E; --ok-bg:rgba(107,138,94,0.14); --ok-border:rgba(107,138,94,0.35);
+    --bad:#B5583C; --bad-bg:rgba(181,88,60,0.14); --bad-border:rgba(181,88,60,0.35);
+    --term-bg:rgba(58,44,32,0.72); --term-ink:#F1E4D4; --term-faint:#B99E82;
+    --font-ui:'IBM Plex Sans',Arial,sans-serif; --font-mono:'JetBrains Mono','Courier New',monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#241C15; --bg-blob-1:#4E3A28; --bg-blob-2:#3A2E20; --bg-blob-3:#5A4632;
+      --glass:rgba(58,46,34,0.55); --glass-2:rgba(58,46,34,0.4); --glass-border:rgba(255,240,222,0.14);
+      --ink:#F1E4D4; --ink-soft:#CBB79E; --ink-faint:#8E7B65;
+      --accent:#D9A46A; --accent-ink:#EFC495; --accent-soft:#6B4E32;
+      --ok:#8FB37E; --ok-bg:rgba(143,179,126,0.16); --ok-border:rgba(143,179,126,0.32);
+      --bad:#D98567; --bad-bg:rgba(217,133,103,0.16); --bad-border:rgba(217,133,103,0.32);
+      --term-bg:rgba(20,15,10,0.72); --term-ink:#F1E4D4; --term-faint:#8E7B65;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#241C15; --bg-blob-1:#4E3A28; --bg-blob-2:#3A2E20; --bg-blob-3:#5A4632;
+    --glass:rgba(58,46,34,0.55); --glass-2:rgba(58,46,34,0.4); --glass-border:rgba(255,240,222,0.14);
+    --ink:#F1E4D4; --ink-soft:#CBB79E; --ink-faint:#8E7B65;
+    --accent:#D9A46A; --accent-ink:#EFC495; --accent-soft:#6B4E32;
+    --ok:#8FB37E; --ok-bg:rgba(143,179,126,0.16); --ok-border:rgba(143,179,126,0.32);
+    --bad:#D98567; --bad-bg:rgba(217,133,103,0.16); --bad-border:rgba(217,133,103,0.32);
+    --term-bg:rgba(20,15,10,0.72); --term-ink:#F1E4D4; --term-faint:#8E7B65;
+    color-scheme: dark;
+  }
+  *{box-sizing:border-box}
+  body{
+    background: var(--bg);
+    background-image:
+      radial-gradient(600px 480px at 8% -8%, var(--bg-blob-1) 0%, transparent 60%),
+      radial-gradient(560px 460px at 96% 12%, var(--bg-blob-2) 0%, transparent 58%),
+      radial-gradient(680px 520px at 50% 108%, var(--bg-blob-3) 0%, transparent 60%);
+    background-attachment: fixed;
+    color:var(--ink); font-family:var(--font-ui); padding-inline:16px;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding-block:32px 64px}
+  header{display:flex; flex-direction:column; gap:6px; margin-bottom:22px}
+  .eyebrow{font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent-ink)}
+  h1{font-size:clamp(26px,4vw,36px); margin:0; font-weight:600; letter-spacing:-.01em}
+
+  .reset-row{display:flex; justify-content:flex-end; margin-bottom:12px}
+  button.reset{background:var(--glass-2); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--glass-border); color:var(--ink-soft); font-family:var(--font-mono); font-size:12px; padding:8px 12px; border-radius:10px; cursor:pointer}
+  button.reset:hover{color:var(--ink)}
+
+  .grid{display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:20px; align-items:start}
+  @media (max-width:860px){ .grid{grid-template-columns:1fr} }
+
+  .glass{
+    background: var(--glass);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(74,55,40,0.12), inset 0 1px 0 rgba(255,255,255,0.35);
+  }
+
+  .steps{display:flex; flex-direction:column; gap:14px; min-width:0}
+  .step{padding:22px; opacity:.4; transition:opacity .2s ease; min-width:0}
+  .step.active{opacity:1}
+  .step.done{opacity:1}
+  .step-head{display:flex; align-items:center; gap:14px; margin-bottom:12px}
+  .badge{width:34px; height:34px; border-radius:50%; background:var(--glass-2); border:1px solid var(--glass-border); display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:15px; color:var(--ink-soft); flex:none}
+  .step.active .badge{background:var(--accent); border-color:var(--accent); color:#2E1D10}
+  .step.done .badge{background:var(--ok); border-color:var(--ok); color:#12210C}
+  .step-title{font-size:19px; font-weight:600; margin:0}
+  .step-body{margin-left:48px; display:flex; flex-direction:column; gap:12px; min-width:0}
+  .btn-row{display:flex; flex-wrap:wrap; gap:10px}
+  button.run{background:var(--accent); color:#2E1D10; border:none; font-family:var(--font-ui); font-weight:600; font-size:14.5px; padding:11px 18px; border-radius:12px; cursor:pointer}
+  button.run:disabled{background:var(--glass-2); color:var(--ink-faint); cursor:not-allowed}
+  button.run.secondary{background:var(--glass-2); color:var(--ink); border:1px solid var(--glass-border)}
+  button.run:not(:disabled):hover{filter:brightness(1.06)}
+
+  .did-cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px}
+  .did-card{background:var(--glass-2); border:1px solid var(--glass-border); border-radius:14px; padding:14px; min-width:0}
+  .did-card .role{font-size:12px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px}
+  .did-card code{font-family:var(--font-mono); font-size:12.5px; color:var(--accent-ink); word-break:break-all; display:block}
+
+  .result{border-radius:14px; padding:14px 16px; font-size:14.5px; display:flex; gap:10px; align-items:flex-start; border:1px solid}
+  .result.ok{background:var(--ok-bg); border-color:var(--ok-border); color:var(--ok)}
+  .result.bad{background:var(--bad-bg); border-color:var(--bad-border); color:var(--bad)}
+  .result .msg{color:var(--ink)}
+
+  .checklist{display:flex; flex-direction:column; gap:6px; font-family:var(--font-mono); font-size:13.5px}
+  .checklist .row{display:flex; gap:8px}
+  .checklist .row.ok{color:var(--ok)}
+  .checklist .row.bad{color:var(--bad)}
+
+  pre.code{background:var(--glass-2); border:1px solid var(--glass-border); border-radius:12px; padding:12px 14px; font-family:var(--font-mono); font-size:12.5px; color:var(--ink-soft); overflow-x:auto; margin:0; max-height:220px; overflow-y:auto}
+
+  /* Quiz: a real question the audience answers before the button confirms it */
+  .quiz{background:var(--glass-2); border:1px solid var(--glass-border); border-radius:14px; padding:16px}
+  .quiz p.q{margin:0 0 10px; font-size:14.5px; font-weight:600}
+  .quiz .opts{display:flex; flex-direction:column; gap:6px; margin-bottom:10px}
+  .quiz label{display:flex; align-items:center; gap:8px; font-size:14px; cursor:pointer}
+  .quiz .feedback{font-size:13.5px; padding:8px 10px; border-radius:10px; display:none}
+  .quiz .feedback.show{display:block}
+  .quiz .feedback.ok{background:var(--ok-bg); color:var(--ok)}
+  .quiz .feedback.bad{background:var(--bad-bg); color:var(--bad)}
+
+  /* Hands-on lab cards for step 5 */
+  .lab{background:var(--glass-2); border:1px solid var(--glass-border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px}
+  .lab h3{margin:0; font-size:15.5px; font-weight:600}
+  .lab p.hint{margin:0; font-size:13.5px; color:var(--ink-soft)}
+  textarea.edit{width:100%; min-height:150px; font-family:var(--font-mono); font-size:12.5px; background:var(--glass-2); color:var(--ink); border:1px solid var(--glass-border); border-radius:10px; padding:10px; resize:vertical}
+  input.edit{width:100%; font-family:var(--font-mono); font-size:12.5px; background:var(--glass-2); color:var(--ink); border:1px solid var(--glass-border); border-radius:10px; padding:10px}
+
+  .console-wrap{position:sticky; top:16px; min-width:0}
+  .console{overflow:hidden; background:var(--term-bg); backdrop-filter:blur(22px) saturate(160%); -webkit-backdrop-filter:blur(22px) saturate(160%); border:1px solid var(--glass-border); border-radius:22px; box-shadow:0 10px 30px rgba(74,55,40,0.18)}
+  .console-head{display:flex; align-items:center; gap:8px; padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.1)}
+  .dot{width:9px; height:9px; border-radius:50%}
+  .dot.r{background:#D98567} .dot.y{background:#E3C07E} .dot.g{background:#8FB37E}
+  .console-title{margin-left:6px; font-family:var(--font-mono); font-size:12px; color:var(--term-faint)}
+  .console-body{padding:16px; font-family:var(--font-mono); font-size:13px; line-height:1.65; color:var(--term-ink); height:min(60vh,560px); overflow-y:auto; white-space:pre-wrap; word-break:break-word}
+  .console-body .ln-cmd{color:var(--accent)}
+  .console-body .ln-ok{color:#8FB37E}
+  .console-body .ln-bad{color:#D98567}
+  .console-body .ln-dim{color:var(--term-faint)}
+  .console-empty{color:var(--term-faint)}
+
+  footer{margin-top:24px; color:var(--ink-faint); font-size:12.5px}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">SSI / DID</p>
+    <h1>Laboratorio SSI</h1>
+  </header>
+
+  <div class="reset-row"><button class="reset" id="resetBtn">Reiniciar</button></div>
+
+  <div class="grid">
+    <div class="steps" id="steps">
+
+      <section class="step active glass" data-step="1">
+        <div class="step-head"><div class="badge">1</div><h2 class="step-title">Crear las identidades</h2></div>
+        <div class="step-body">
+          <div class="btn-row"><button class="run" id="btn1">Generar identidades</button></div>
+          <div class="did-cards" id="out1"></div>
+        </div>
+      </section>
+
+      <section class="step glass" data-step="2">
+        <div class="step-head"><div class="badge">2</div><h2 class="step-title">Emitir la credencial</h2></div>
+        <div class="step-body">
+          <div class="btn-row"><button class="run" id="btn2" disabled>Emitir credencial</button></div>
+          <div id="out2"></div>
+          <div class="quiz" id="quiz2" style="display:none">
+            <p class="q">En el JSON de arriba, cual campo dice quien la emitio?</p>
+            <div class="opts">
+              <label><input type="radio" name="q2" value="bad"> exp</label>
+              <label><input type="radio" name="q2" value="ok"> iss</label>
+              <label><input type="radio" name="q2" value="bad"> sub</label>
+            </div>
+            <button class="run secondary" id="q2check">Comprobar</button>
+            <div class="feedback" id="q2fb"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="step glass" data-step="3">
+        <div class="step-head"><div class="badge">3</div><h2 class="step-title">Verificar la firma</h2></div>
+        <div class="step-body">
+          <div class="quiz" id="quiz3">
+            <p class="q">Para comprobar esta firma sin llamar a la universidad, que necesita la empresa?</p>
+            <div class="opts">
+              <label><input type="radio" name="q3" value="bad"> La clave privada de la universidad</label>
+              <label><input type="radio" name="q3" value="ok"> La clave publica de la universidad</label>
+              <label><input type="radio" name="q3" value="bad"> Una llamada a la universidad</label>
+            </div>
+            <button class="run secondary" id="q3check">Comprobar</button>
+            <div class="feedback" id="q3fb"></div>
+          </div>
+          <div class="btn-row"><button class="run" id="btn3" disabled>Verificar credencial</button></div>
+          <div id="out3"></div>
+        </div>
+      </section>
+
+      <section class="step glass" data-step="4">
+        <div class="step-head"><div class="badge">4</div><h2 class="step-title">Presentacion con reto</h2></div>
+        <div class="step-body">
+          <div class="btn-row"><button class="run" id="btn4" disabled>Ejecutar presentacion</button></div>
+          <div id="out4"></div>
+        </div>
+      </section>
+
+      <section class="step glass" data-step="5">
+        <div class="step-head"><div class="badge">5</div><h2 class="step-title">Pruebas de integridad</h2></div>
+        <div class="step-body">
+          <div class="lab" id="lab5a">
+            <h3>A. Modificacion de la credencial</h3>
+            <p class="hint">Modifique el JSON, por ejemplo el campo carrera, y presione Verificar con estos cambios.</p>
+            <textarea class="edit" id="editPayload" disabled></textarea>
+            <div class="btn-row"><button class="run secondary" id="btnEditVerify" disabled>Verificar con estos cambios</button></div>
+            <div id="outEdit"></div>
+          </div>
+
+          <div class="lab" id="lab5b">
+            <h3>B. Suplantacion del emisor</h3>
+            <p class="hint">Genere una identidad adicional y utilicela para firmar la misma credencial, simulando ser la universidad.</p>
+            <div class="btn-row">
+              <button class="run secondary" id="btnMakeImpostor" disabled>Generar identidad impostora</button>
+              <button class="run secondary" id="btnForge" disabled>Intentar hacerse pasar por la universidad</button>
+            </div>
+            <div id="outForge"></div>
+          </div>
+
+          <div class="lab" id="lab5c">
+            <h3>C. Reenvio de una presentacion</h3>
+            <p class="hint">Reenvie la presentacion firmada en el paso anterior contra un reto nuevo.</p>
+            <div class="btn-row"><button class="run secondary" id="btnReplay" disabled>Reenviar presentacion vieja</button></div>
+            <div id="outReplay"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <div class="console-wrap">
+      <div class="console">
+        <div class="console-head">
+          <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+          <span class="console-title">consola</span>
+        </div>
+        <div class="console-body" id="console"><span class="console-empty">Esperando el paso 1...</span></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>Ed25519 en tu navegador. Nada se envia a ningun servidor.</footer>
+</div>
+
+<script type="module">
+import * as ed from "https://cdn.jsdelivr.net/npm/@noble/ed25519@2.1.0/+esm";
+
+const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+function concatBytes(...arrs){
+  let len = 0; for (const a of arrs) len += a.length;
+  const out = new Uint8Array(len); let o = 0;
+  for (const a of arrs){ out.set(a, o); o += a.length; }
+  return out;
+}
+function b58encode(bytes){
+  let num = 0n;
+  for (const b of bytes) num = num * 256n + BigInt(b);
+  let out = "";
+  while (num > 0n){ const rem = num % 58n; num = num / 58n; out = B58[Number(rem)] + out; }
+  let zeros = 0; for (const b of bytes){ if (b === 0) zeros++; else break; }
+  return "1".repeat(zeros) + out;
+}
+function b58decode(str){
+  let num = 0n;
+  for (const c of str){ num = num * 58n + BigInt(B58.indexOf(c)); }
+  let hex = num.toString(16); if (hex.length % 2) hex = "0" + hex;
+  let bytes = hex === "0" ? new Uint8Array() : new Uint8Array(hex.match(/.{1,2}/g).map(h => parseInt(h,16)));
+  let zeros = 0; for (const c of str){ if (c === "1") zeros++; else break; }
+  return concatBytes(new Uint8Array(zeros), bytes);
+}
+function b64u(bytes){
+  let bin = ""; for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function b64uDecode(str){
+  str = str.replace(/-/g,"+").replace(/_/g,"/");
+  while (str.length % 4) str += "=";
+  const bin = atob(str);
+  const out = new Uint8Array(bin.length);
+  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+function utf8(str){ return new TextEncoder().encode(str); }
+function utf8Decode(bytes){ return new TextDecoder().decode(bytes); }
+function randomBytes(n){ const a = new Uint8Array(n); crypto.getRandomValues(a); return a; }
+
+function createDid(pubBytes){
+  return "did:key:z" + b58encode(concatBytes(new Uint8Array([0xed,0x01]), pubBytes));
+}
+function resolveDid(did){
+  if (!did.startsWith("did:key:z")) throw new Error("solo se soporta did:key");
+  const raw = b58decode(did.slice("did:key:z".length));
+  if (raw[0] !== 0xed || raw[1] !== 0x01) throw new Error("no es una clave Ed25519");
+  return raw.slice(2);
+}
+
+async function makeIdentity(){
+  const priv = ed.utils.randomPrivateKey();
+  const pub = await ed.getPublicKeyAsync(priv);
+  const did = createDid(pub);
+  return { priv, pub, did };
+}
+
+async function signJwt(payload, did, priv){
+  const header = { alg:"EdDSA", typ:"JWT", kid: did + "#" + did.split(":").pop() };
+  const h = b64u(utf8(JSON.stringify(header)));
+  const p = b64u(utf8(JSON.stringify(payload)));
+  const sig = await ed.signAsync(utf8(h+"."+p), priv);
+  return h+"."+p+"."+b64u(sig);
+}
+async function verifyJwt(token, expectedDid=null){
+  const [h,p,s] = token.split(".");
+  const payload = JSON.parse(utf8Decode(b64uDecode(p)));
+  const signer = payload.iss;
+  if (expectedDid && signer !== expectedDid) throw new Error("el firmante no es quien se esperaba");
+  const pub = resolveDid(signer);
+  const ok = await ed.verifyAsync(b64uDecode(s), utf8(h+"."+p), pub);
+  if (!ok) throw new Error("FIRMA INVALIDA");
+  return payload;
+}
+
+// ---- console log ----
+const consoleEl = document.getElementById("console");
+function log(text, kind){
+  if (consoleEl.querySelector(".console-empty")) consoleEl.innerHTML = "";
+  const span = document.createElement("div");
+  span.className = kind ? "ln-"+kind : "";
+  span.textContent = text;
+  consoleEl.appendChild(span);
+  consoleEl.scrollTop = consoleEl.scrollHeight;
+}
+function logBlank(){ log("", null); }
+
+// ---- state ----
+const S = {};
+
+function activateStep(n){
+  document.querySelectorAll(".step").forEach(el=>{
+    const step = Number(el.dataset.step);
+    if (step < n) el.classList.add("done"); else el.classList.remove("done");
+    if (step === n) el.classList.add("active"); else el.classList.remove("active");
+  });
+}
+function enable(id){ document.getElementById(id).disabled = false; }
+
+// ---- Quiz wiring (steps 2 and 3) ----
+function wireQuiz(quizId, checkId, fbId){
+  document.getElementById(checkId).addEventListener("click", () => {
+    const picked = document.querySelector(`#${quizId} input[type=radio]:checked`);
+    const fb = document.getElementById(fbId);
+    fb.classList.add("show");
+    if (!picked){ fb.className = "feedback show bad"; fb.textContent = "Seleccione una opcion."; return; }
+    if (picked.value === "ok"){ fb.className = "feedback show ok"; fb.textContent = "Correcto."; }
+    else { fb.className = "feedback show bad"; fb.textContent = "Incorrecto. Revise el JSON anterior."; }
+  });
+}
+wireQuiz("quiz3","q3check","q3fb");
+
+// ---- Step 1 ----
+document.getElementById("btn1").addEventListener("click", async () => {
+  const btn = document.getElementById("btn1"); btn.disabled = true; btn.textContent = "Generando...";
+  log("$ paso1 -- crear identidades", "cmd");
+  S.universidad = await makeIdentity();
+  S.estudiante = await makeIdentity();
+  S.empresa = await makeIdentity();
+  log(S.universidad.did);
+  log(S.estudiante.did);
+  log(S.empresa.did);
+  logBlank();
+
+  const out = document.getElementById("out1");
+  out.innerHTML = "";
+  for (const [role, id] of [["Universidad", S.universidad], ["Estudiante", S.estudiante], ["Empresa", S.empresa]]){
+    const card = document.createElement("div");
+    card.className = "did-card";
+    card.innerHTML = `<div class="role">${role}</div><code>${id.did}</code>`;
+    out.appendChild(card);
+  }
+  btn.textContent = "Identidades generadas";
+  activateStep(2);
+  enable("btn2");
+});
+
+// ---- Step 2 ----
+document.getElementById("btn2").addEventListener("click", async () => {
+  const btn = document.getElementById("btn2"); btn.disabled = true;
+  log("$ paso2 -- emitir credencial", "cmd");
+  const now = Math.floor(Date.now()/1000);
+  S.payload = {
+    iss: S.universidad.did, sub: S.estudiante.did,
+    iat: now, exp: now + 365*24*3600,
+    vc: {
+      type: ["VerifiableCredential","TituloUniversitario"],
+      credentialSubject: { id: S.estudiante.did, carrera: "Ingenieria en Sistemas", graduado: true }
+    }
+  };
+  S.credential = await signJwt(S.payload, S.universidad.did, S.universidad.priv);
+  log(S.credential.slice(0,64)+"...", "dim");
+  logBlank();
+
+  const out = document.getElementById("out2");
+  out.innerHTML = `<pre class="code">${JSON.stringify(S.payload,null,2)}</pre>`;
+  document.getElementById("quiz2").style.display = "block";
+  btn.textContent = "Credencial emitida";
+  activateStep(3);
+  enable("btn3");
+});
+wireQuiz("quiz2","q2check","q2fb");
+
+// ---- Step 3 ----
+document.getElementById("btn3").addEventListener("click", async () => {
+  const btn = document.getElementById("btn3"); btn.disabled = true;
+  log("$ paso3 -- verificar credencial", "cmd");
+  const out = document.getElementById("out3");
+  try {
+    const payload = await verifyJwt(S.credential, S.universidad.did);
+    if (payload.exp < Math.floor(Date.now()/1000)) throw new Error("credencial vencida");
+    log("resultado: VALIDA", "ok");
+    out.innerHTML = `<div class="result ok"><span class="msg">Credencial valida.</span></div>`;
+  } catch (e){
+    log("rechazado: " + e.message, "bad");
+    out.innerHTML = `<div class="result bad"><span class="msg">${e.message}</span></div>`;
+  }
+  logBlank();
+  btn.textContent = "Credencial verificada";
+  activateStep(4);
+  enable("btn4");
+});
+
+// ---- Step 4 ----
+document.getElementById("btn4").addEventListener("click", async () => {
+  const btn = document.getElementById("btn4"); btn.disabled = true;
+  log("$ paso4 -- presentacion con reto", "cmd");
+  const out = document.getElementById("out4");
+
+  const nonce = b64u(randomBytes(16));
+  S.lastNonce = nonce;
+  log("reto: " + nonce, "dim");
+
+  const presentation = await signJwt({
+    iss: S.estudiante.did, aud: S.empresa.did, nonce,
+    iat: Math.floor(Date.now()/1000),
+    vp: { verifiableCredential:[S.credential] }
+  }, S.estudiante.did, S.estudiante.priv);
+  S.lastPresentation = presentation;
+
+  const checks = [];
+  try {
+    const vp = await verifyJwt(presentation);
+    checks.push([vp.nonce === nonce, "responde al reto de esta sesion"]);
+    checks.push([vp.aud === S.empresa.did, "dirigida a esta empresa"]);
+    const vc = await verifyJwt(vp.vp.verifiableCredential[0], S.universidad.did);
+    checks.push([true, "credencial firmada por la universidad"]);
+    checks.push([vc.sub === vp.iss, "pertenece a quien la presenta"]);
+  } catch (e){
+    checks.push([false, e.message]);
+  }
+
+  out.innerHTML = "";
+  const list = document.createElement("div");
+  list.className = "checklist";
+  let allOk = true;
+  for (const [ok, label] of checks){
+    if (!ok) allOk = false;
+    log((ok ? "[ok] " : "[fallo] ") + label, ok ? "ok" : "bad");
+    const row = document.createElement("div");
+    row.className = "row " + (ok ? "ok" : "bad");
+    row.textContent = (ok ? "[ok] " : "[fallo] ") + label;
+    list.appendChild(row);
+  }
+  out.appendChild(list);
+  logBlank();
+
+  btn.textContent = "Presentacion verificada";
+  activateStep(5);
+
+  // wire up step 5 hands-on labs now that credential + presentation exist
+  const ta = document.getElementById("editPayload");
+  ta.value = JSON.stringify(S.payload, null, 2);
+  ta.disabled = false;
+  enable("btnEditVerify");
+  enable("btnMakeImpostor");
+  enable("btnReplay");
+});
+
+// ---- Step 5A: edit + verify ----
+document.getElementById("btnEditVerify").addEventListener("click", async () => {
+  log("$ intento A -- credencial editada a mano", "cmd");
+  const out = document.getElementById("outEdit");
+  const [h,,s] = S.credential.split(".");
+  try {
+    const edited = JSON.parse(document.getElementById("editPayload").value);
+    const pEdited = b64u(utf8(JSON.stringify(edited)));
+    await verifyJwt(h+"."+pEdited+"."+s, S.universidad.did);
+    log("VERIFICO -- esto no deberia pasar", "bad");
+    out.innerHTML = `<div class="result bad"><span class="msg">Paso la verificacion. Revisa si de verdad cambiaste algo.</span></div>`;
+  } catch (e) {
+    log("rechazado: " + e.message, "ok");
+    out.innerHTML = `<div class="result ok"><span class="msg">Rechazado. La firma solo es valida para el texto exacto firmado por la universidad; cualquier modificacion la invalida.</span></div>`;
+  }
+});
+
+// ---- Step 5B: forge as impostor ----
+document.getElementById("btnMakeImpostor").addEventListener("click", async () => {
+  log("$ intento B -- generar identidad impostora", "cmd");
+  S.impostor = await makeIdentity();
+  log(S.impostor.did, "dim");
+  enable("btnForge");
+  document.getElementById("btnMakeImpostor").textContent = "Impostor generado";
+  document.getElementById("btnMakeImpostor").disabled = true;
+});
+document.getElementById("btnForge").addEventListener("click", async () => {
+  log("$ intento B -- firmar como la universidad", "cmd");
+  const out = document.getElementById("outForge");
+  try {
+    const falsa = await signJwt({...S.payload, iss: S.impostor.did}, S.impostor.did, S.impostor.priv);
+    await verifyJwt(falsa, S.universidad.did);
+    log("PASO -- esto no deberia pasar", "bad");
+    out.innerHTML = `<div class="result bad"><span class="msg">Paso. Algo esta mal.</span></div>`;
+  } catch (e) {
+    log("rechazado: " + e.message, "ok");
+    out.innerHTML = `<div class="result ok"><span class="msg">Rechazado. La identidad impostora firmo con su propia clave, no con la de la universidad, y el firmante no coincide con el esperado.</span></div>`;
+  }
+});
+
+// ---- Step 5C: replay ----
+document.getElementById("btnReplay").addEventListener("click", async () => {
+  log("$ intento C -- reenviar presentacion vieja", "cmd");
+  const out = document.getElementById("outReplay");
+  try {
+    const vp = await verifyJwt(S.lastPresentation);
+    const retoNuevo = b64u(randomBytes(16));
+    log("nuevo reto de la sesion: " + retoNuevo, "dim");
+    if (vp.nonce !== retoNuevo) throw new Error("el reto de la presentacion vieja no coincide con el de ahora");
+    log("PASO -- esto no deberia pasar", "bad");
+    out.innerHTML = `<div class="result bad"><span class="msg">Paso. Algo esta mal.</span></div>`;
+  } catch (e) {
+    log("rechazado: " + e.message, "ok");
+    out.innerHTML = `<div class="result ok"><span class="msg">Rechazado. La presentacion corresponde a un reto anterior, distinto al de esta sesion.</span></div>`;
+  }
+});
+
+// ---- reset ----
+document.getElementById("resetBtn").addEventListener("click", () => window.location.reload());
+</script>
